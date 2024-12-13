@@ -1,0 +1,11 @@
+{
+  "ACCOUNTS_URL":"https://account.digitrans.lab",
+  "UPLOAD_URL":"/files",
+  "MODEL_VERSION": null,
+  "TELEGRAM_URL": "https://telegram.digitrans.lab",
+  "GMAIL_URL": "https://gmail.digitrans.lab",
+  "CALENDAR_URL": "https://calendar.digitrans.lab",
+  "REKONI_URL": "https://rekoni.digitrans.lab",
+  "COLLABORATOR_URL": "wss://collaborator.digitrans.lab",
+  "STATS_URL": "https://stats.digitrans.lab"
+}

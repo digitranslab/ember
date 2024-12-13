@@ -1,0 +1,509 @@
+services:
+  mongodb:
+    image: 'mongo:7-jammy'
+    container_name: mongodb
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    healthcheck:
+      test: echo "try { db.currentOp().ok } catch (err) { }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 30
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - db:/data/db
+    ports:
+      - 27017:27017
+    restart: unless-stopped
+  postgres:
+    image: postgres
+    container_name: postgres
+    environment:
+      - POSTGRES_PASSWORD=example
+    volumes:
+      - dbpg:/data/db
+    ports:
+      - 5432:5432
+    restart: unless-stopped
+  cockroach:
+    image: cockroachdb/cockroach:latest-v24.2
+    ports:
+      - '26257:26257'
+      - '8089:8080'
+    command: start-single-node --insecure
+    volumes:
+      - cockroach_db:/cockroach/cockroach-data
+    restart: unless-stopped
+  minio:
+    image: 'minio/minio'
+    command: server /data --address ":9000" --console-address ":9001"
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - files:/data
+    restart: unless-stopped
+  elastic:
+    image: 'elasticsearch:7.14.2'
+    command: |
+      /bin/sh -c "./bin/elasticsearch-plugin list | grep -q ingest-attachment || yes | ./bin/elasticsearch-plugin install --silent ingest-attachment;      
+      /usr/local/bin/docker-entrypoint.sh eswrapper"
+    volumes:
+      - elastic:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    environment:
+      - ELASTICSEARCH_PORT_NUMBER=9200
+      - BITNAMI_DEBUG=true
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      - http.cors.enabled=true
+      - http.cors.allow-origin=http://localhost:8082
+    healthcheck:
+      interval: 20s
+      retries: 10
+      test: curl -s http://localhost:9200/_cluster/health | grep -vq '"status":"red"'
+    restart: unless-stopped
+  account:
+    image: digitranslab/account
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    links:
+      - mongodb
+      - minio
+      - stats
+    ports:
+      - 3000:3000
+    volumes:
+      - ./branding.json:/var/cfg/branding.json
+    environment:
+      - ACCOUNT_PORT=3000
+      - SERVER_SECRET=secret
+      - STATS_URL=http://host.docker.internal:4900
+      # - DB_URL=postgresql://postgres:example@postgres:5432
+      - DB_URL=${MONGO_URL}
+      # - DB_NS=account-2
+      # Pass only one region to disallow selection for new workspaces.Ø
+      - REGION_INFO=|Mongo;pg|Postgres;cockroach|CockroachDB
+      # - REGION_INFO=cockroach|CockroachDB
+      - TRANSACTOR_URL=ws://host.docker.internal:3333,ws://host.docker.internal:3331;;pg,ws://host.docker.internal:3332;;cockroach,
+      - SES_URL=
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - FRONT_URL=http://host.docker.internal:8087
+      - RESERVED_DB_NAMES=telegram,gmail,github
+      - MODEL_ENABLED=*
+      - LAST_NAME_FIRST=true
+      # - WS_LIVENESS_DAYS=1
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - BRANDING_PATH=/var/cfg/branding.json
+      # - DISABLE_SIGNUP=true
+      # - INIT_SCRIPT_URL=https://raw.githubusercontent.com/digitranslab/init/main/script.yaml
+      # - INIT_WORKSPACE=onboarding
+    restart: unless-stopped
+  stats:
+    image: digitranslab/stats
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - 4900:4900
+    environment:
+      - PORT=4900
+      - SERVER_SECRET=secret
+    restart: unless-stopped
+  workspace:
+    image: digitranslab/workspace
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    links:
+      - mongodb
+      - minio
+      - stats
+    volumes:
+      - ./branding.json:/var/cfg/branding.json
+    environment:
+      - WS_OPERATION=all+backup
+      - SERVER_SECRET=secret
+      - DB_URL=${MONGO_URL}
+      - STATS_URL=http://host.docker.internal:4900
+      - SES_URL=
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - RESERVED_DB_NAMES=telegram,gmail,github
+      - MODEL_ENABLED=*
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - BRANDING_PATH=/var/cfg/branding.json
+      # - PARALLEL=2
+      - INIT_WORKSPACE=test
+      - BACKUP_STORAGE=${BACKUP_STORAGE_CONFIG}
+      - BACKUP_BUCKET=${BACKUP_BUCKET_NAME}
+    restart: unless-stopped
+  workspacepg:
+    image: digitranslab/workspace
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    links:
+      - postgres
+      - minio
+      - stats
+    volumes:
+      - ./branding.json:/var/cfg/branding.json
+    environment:
+      - WS_OPERATION=all+backup
+      - SERVER_SECRET=secret
+      - DB_URL=postgresql://postgres:example@postgres:5432
+      - STATS_URL=http://host.docker.internal:4900
+      - SES_URL=
+      - REGION=pg
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - FRONT_URL=http://host.docker.internal:8087
+      - RESERVED_DB_NAMES=telegram,gmail,github
+      - MODEL_ENABLED=*
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - BRANDING_PATH=/var/cfg/branding.json
+      # - PARALLEL=2
+      # - INIT_WORKSPACE=onboarding
+      - BACKUP_STORAGE=${BACKUP_STORAGE_CONFIG}
+      - BACKUP_BUCKET=${BACKUP_BUCKET_NAME}
+    restart: unless-stopped
+  workspace_cockroach:
+    image: digitranslab/workspace
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    links:
+      - cockroach
+      - minio
+      - stats
+    volumes:
+      - ./branding.json:/var/cfg/branding.json
+    environment:
+      - WS_OPERATION=all+backup
+      - SERVER_SECRET=secret
+      - DB_URL=postgresql://root@host.docker.internal:26257/defaultdb?sslmode=disable
+      - STATS_URL=http://host.docker.internal:4900
+      - SES_URL=
+      - REGION=cockroach
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - RESERVED_DB_NAMES=telegram,gmail,github
+      - MODEL_ENABLED=*
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - BRANDING_PATH=/var/cfg/branding.json
+      # - PARALLEL=2
+      # - INIT_WORKSPACE=onboarding
+      - BACKUP_STORAGE=${BACKUP_STORAGE_CONFIG}
+      - BACKUP_BUCKET=${BACKUP_BUCKET_NAME}
+    restart: unless-stopped
+  collaborator:
+    image: digitranslab/collaborator
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    links:
+      - mongodb
+      - minio
+      - transactor
+      - stats
+    ports:
+      - 3078:3078
+    environment:
+      - COLLABORATOR_PORT=3078
+      - SECRET=secret
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - STATS_URL=http://host.docker.internal:4900
+    restart: unless-stopped
+  front:
+    image: digitranslab/front
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    links:
+      - mongodb
+      - minio
+      - elastic
+      - transactor
+      - collaborator
+      - stats
+    ports:
+      - 8087:8080
+      - 8088:8080
+    environment:
+      - SERVER_PORT=8080
+      - SERVER_SECRET=secret
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - STATS_URL=http://host.docker.internal:4900
+      - UPLOAD_URL=/files
+      - GMAIL_URL=http://host.docker.internal:8088
+      - CALENDAR_URL=http://host.docker.internal:8095
+      - TELEGRAM_URL=http://host.docker.internal:8086
+      - REKONI_URL=http://host.docker.internal:4004
+      - COLLABORATOR_URL=ws://host.docker.internal:3078
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - GITHUB_URL=http://host.docker.internal:3500
+      - PRINT_URL=http://host.docker.internal:4005
+      - SIGN_URL=http://host.docker.internal:4006
+      - ANALYTICS_COLLECTOR_URL=http://host.docker.internal:4017
+      - DESKTOP_UPDATES_URL=https://dist.ember.io
+      - DESKTOP_UPDATES_CHANNEL=dev
+      - BRANDING_URL=http://host.docker.internal:8087/branding.json
+      # - DISABLE_SIGNUP=true
+    restart: unless-stopped
+  transactor:
+    image: digitranslab/transactor
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    links:
+      - mongodb
+      - minio
+      - account
+      - stats
+      # - apm-server
+    ports:
+      - 3333:3333
+    volumes:
+      - ./branding.json:/var/cfg/branding.json
+    environment:
+      # - SERVER_PROVIDER=uweb
+      # - UWS_HTTP_MAX_HEADERS_SIZE="32768"
+      - UV_THREADPOOL_SIZE=10
+      - SERVER_PORT=3333
+      - SERVER_SECRET=secret
+      - ENABLE_COMPRESSION=true
+      - STATS_URL=http://host.docker.internal:4900
+      - FULLTEXT_URL=http://host.docker.internal:4700
+      # - DB_URL=postgresql://postgres:example@postgres:5432
+      - DB_URL=${MONGO_URL}
+      - MONGO_URL=${MONGO_URL}
+      - 'MONGO_OPTIONS={"appName": "transactor", "maxPoolSize": 10}'
+      - METRICS_CONSOLE=false
+      - METRICS_FILE=metrics.txt
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - FRONT_URL=http://host.docker.internal:8087
+      # - APM_SERVER_URL=http://apm-server:8200
+      - SES_URL=''
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - LAST_NAME_FIRST=true
+      - BRANDING_PATH=/var/cfg/branding.json
+      - SUPPORT_WORKSPACE=support
+      - AI_BOT_URL=http://host.docker.internal:4010
+    restart: unless-stopped
+  transactor_pg:
+    image: digitranslab/transactor
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    links:
+      - postgres
+      - minio
+      - account
+      - stats
+      # - apm-server
+    ports:
+      - 3331:3331
+    volumes:
+      - ./branding.json:/var/cfg/branding.json
+    environment:
+      # - SERVER_PROVIDER=uweb
+      # - UWS_HTTP_MAX_HEADERS_SIZE="32768"
+      # - UV_THREADPOOL_SIZE=10
+      - SERVER_PORT=3331
+      - SERVER_SECRET=secret
+      - ENABLE_COMPRESSION=true
+      - FULLTEXT_URL=http://host.docker.internal:4701
+      - STATS_URL=http://host.docker.internal:4900
+      - DB_URL=postgresql://postgres:example@postgres:5432
+      - METRICS_CONSOLE=false
+      - METRICS_FILE=metrics.txt
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - FRONT_URL=http://host.docker.internal:8087
+      # - APM_SERVER_URL=http://apm-server:8200
+      - SES_URL=''
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - LAST_NAME_FIRST=true
+      - BRANDING_PATH=/var/cfg/branding.json
+    restart: unless-stopped
+  transactor_cockroach:
+    image: digitranslab/transactor
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    links:
+      - cockroach
+      - minio
+      - account
+      - stats
+      # - apm-server
+    ports:
+      - 3332:3332
+    volumes:
+      - ./branding.json:/var/cfg/branding.json
+    environment:
+      # - SERVER_PROVIDER=uweb
+      # - UWS_HTTP_MAX_HEADERS_SIZE="32768"
+      # - UV_THREADPOOL_SIZE=10
+      - SERVER_PORT=3332
+      - SERVER_SECRET=secret
+      - ENABLE_COMPRESSION=true
+      - FULLTEXT_URL=http://host.docker.internal:4702
+      - STATS_URL=http://host.docker.internal:4900
+      - DB_URL=postgresql://root@host.docker.internal:26257/defaultdb?sslmode=disable
+      - METRICS_CONSOLE=false
+      - METRICS_FILE=metrics.txt
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - FRONT_URL=http://host.docker.internal:8087
+      # - APM_SERVER_URL=http://apm-server:8200
+      - SES_URL=''
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - LAST_NAME_FIRST=true
+      - BRANDING_PATH=/var/cfg/branding.json
+    restart: unless-stopped
+  rekoni:
+    image: digitranslab/rekoni-service
+    restart: unless-stopped
+    ports:
+      - 4004:4004
+  fulltext:
+    image: digitranslab/fulltext
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+    links:
+      - elastic
+      - mongodb
+    ports:
+      - 4700:4700
+    environment:
+      - SERVER_SECRET=secret
+      - DB_URL=${MONGO_URL}
+      - FULLTEXT_DB_URL=http://host.docker.internal:9200
+      - ELASTIC_INDEX_NAME=local_storage_index
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - STATS_URL=http://host.docker.internal:4900
+      - REKONI_URL=http://host.docker.internal:4004
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+  fulltext_pg:
+    image: digitranslab/fulltext
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+    links:
+      - elastic
+      - postgres
+    ports:
+      - 4701:4701
+    environment:
+      - PORT=4701
+      - SERVER_SECRET=secret
+      - DB_URL=postgresql://postgres:example@postgres:5432
+      - FULLTEXT_DB_URL=http://host.docker.internal:9200
+      - ELASTIC_INDEX_NAME=local_storage_index
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - STATS_URL=http://host.docker.internal:4900
+      - REKONI_URL=http://host.docker.internal:4004
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+  fulltext_cockroach:
+    image: digitranslab/fulltext
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+    links:
+      - elastic
+      - cockroach
+    ports:
+      - 4702:4702
+    environment:
+      - PORT=4702
+      - SERVER_SECRET=secret
+      - DB_URL=postgresql://root@host.docker.internal:26257/defaultdb?sslmode=disable
+      - FULLTEXT_DB_URL=http://host.docker.internal:9200
+      - ELASTIC_INDEX_NAME=local_storage_index
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - STATS_URL=http://host.docker.internal:4900
+      - REKONI_URL=http://host.docker.internal:4004
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+  print:
+    image: digitranslab/print
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+    ports:
+      - 4005:4005
+    environment:
+      - SECRET=secret
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - STATS_URL=http://host.docker.internal:4900
+  sign:
+    image: digitranslab/sign
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+    ports:
+      - 4006:4006
+    volumes:
+      - ../services/sign/pod-sign/debug/certificate.p12:/var/cfg/certificate.p12
+      - ../services/sign/pod-sign/debug/branding.json:/var/cfg/branding.json
+    environment:
+      - SECRET=secret
+      - MINIO_ENDPOINT=minio
+      - MINIO_ACCESS_KEY=minioadmin
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - MINIO_SECRET_KEY=minioadmin
+      - CERTIFICATE_PATH=/var/cfg/certificate.p12
+      - SERVICE_ID=sign-service
+      - BRANDING_PATH=/var/cfg/branding.json
+      - STATS_URL=http://host.docker.internal:4900
+  analytics:
+    image: digitranslab/analytics-collector
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+    ports:
+      - 4017:4017
+    environment:
+      - SECRET=secret
+      - PORT=4017
+      - MONGO_URL=${MONGO_URL}
+      - 'MONGO_OPTIONS={"appName":"analytics","maxPoolSize":1}'
+      - SERVICE_ID=analytics-collector-service
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - SUPPORT_WORKSPACE=support
+      - STATS_URL=http://host.docker.internal:4900
+  aiBot:
+    image: digitranslab/ai-bot
+    ports:
+      - 4010:4010
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+    environment:
+      - SERVER_SECRET=secret
+      - MONGO_URL=${MONGO_URL}
+      - ACCOUNTS_URL=http://host.docker.internal:3000
+      - SUPPORT_WORKSPACE=support
+      - FIRST_NAME=Jolie
+      - LAST_NAME=AI
+      - PASSWORD=password
+      - AVATAR_PATH=./avatar.png
+      - AVATAR_CONTENT_TYPE=.png
+      - STATS_URL=http://host.docker.internal:4900
+#      - LOVE_ENDPOINT=http://host.docker.internal:8096
+#      - OPENAI_API_KEY=token
+#  telegram-bot:
+#    image: digitranslab/telegram-bot
+#   extra_hosts:
+#     - "host.docker.internal:host-gateway"
+#    restart: unless-stopped
+#    environment:
+#      - PORT=4020
+#      - BOT_TOKEN=token
+#      - MONGO_URL=${MONGO_URL}
+#      - MONGO_DB=telegram-bot
+#      - SECRET=secret
+#      - DOMAIN=domain
+#      - ACCOUNTS_URL=http://host.docker.internal:3000
+#      - SERVICE_ID=telegram-bot-service
+#      - STATS_URL=http://host.docker.internal:4900
+volumes:
+  db:
+  dbpg:
+  files:
+  elastic:
+  cockroach_db:

@@ -1,0 +1,31 @@
+<script lang="ts">
+  import { createEventDispatcher } from 'svelte'
+
+  import chunter, { type ChatMessage } from '@digitranslab/chunter'
+  import { Ref, generateId } from '@digitranslab/core'
+  import { ReferenceInput } from '@digitranslab/text-editor-resources'
+
+  import { addDocumentCommentFx } from '../../../stores/editors/document'
+
+  export let nodeId: string | undefined
+
+  const dispatch = createEventDispatcher()
+
+  let messageId: Ref<ChatMessage> = generateId()
+
+  async function handleMessage (event: CustomEvent<string>): Promise<void> {
+    const comment = await addDocumentCommentFx({ content: event.detail, messageId, nodeId })
+    messageId = generateId()
+
+    dispatch('close', comment)
+  }
+</script>
+
+<div class="text-editor-popup w-85">
+  <ReferenceInput
+    focusable
+    kindSend="primary"
+    placeholder={chunter.string.AddCommentPlaceholder}
+    on:message={handleMessage}
+  />
+</div>

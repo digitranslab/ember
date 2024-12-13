@@ -1,0 +1,2210 @@
+/**
+ * This is the main configuration file for Rush.
+ * For full documentation, please see https://rushjs.io
+ */
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush.schema.json",
+
+  /**
+   * (Required) This specifies the version of the Rush engine to be used in this repo.
+   * Rush's "version selector" feature ensures that the globally installed tool will
+   * behave like this release, regardless of which version is installed globally.
+   *
+   * The common/scripts/install-run-rush.js automation script also uses this version.
+   *
+   * NOTE: If you upgrade to a new major version of Rush, you should replace the "v5"
+   * path segment in the "$schema" field for all your Rush config files.  This will ensure
+   * correct error-underlining and tab-completion for editors such as VS Code.
+   */
+  "rushVersion": "5.140.1",
+
+  /**
+   * The next field selects which package manager should be installed and determines its version.
+   * Rush installs its own local copy of the package manager to ensure that your build process
+   * is fully isolated from whatever tools are present in the local environment.
+   *
+   * Specify one of: "pnpmVersion", "npmVersion", or "yarnVersion".  See the Rush documentation
+   * for details about these alternatives.
+   */
+  "pnpmVersion": "8.15.9",
+
+  // "npmVersion": "4.5.0",
+  // "yarnVersion": "1.9.4",
+
+  /**
+   * Options that are only used when the PNPM package manager is selected
+   */
+  "pnpmOptions": {
+    /**
+     * Specifies the location of the PNPM store.  There are two possible values:
+     *
+     * - "local" - use the "pnpm-store" folder in the current configured temp folder:
+     *   "common/temp/pnpm-store" by default.
+     * - "global" - use PNPM's global store, which has the benefit of being shared
+     *    across multiple repo folders, but the disadvantage of less isolation for builds
+     *    (e.g. bugs or incompatibilities when two repos use different releases of PNPM)
+     *
+     * RUSH_PNPM_STORE_PATH will override the directory that will be used as the store
+     *
+     * In all cases, the store path will be overridden by the environment variable RUSH_PNPM_STORE_PATH.
+     *
+     * The default value is "local".
+     */
+    // "pnpmStore": "local",
+
+    /**
+     * If true, then Rush will add the "--strict-peer-dependencies" option when invoking PNPM.
+     * This causes "rush install" to fail if there are unsatisfied peer dependencies, which is
+     * an invalid state that can cause build failures or incompatible dependency versions.
+     * (For historical reasons, JavaScript package managers generally do not treat this invalid
+     * state as an error.)
+     *
+     * The default value is false to avoid legacy compatibility issues.
+     * It is strongly recommended to set strictPeerDependencies=true.
+     */
+    "strictPeerDependencies": false,
+
+    /**
+     * Configures the strategy used to select versions during installation.
+     *
+     * This feature requires PNPM version 3.1 or newer.  It corresponds to the "--resolution-strategy" command-line
+     * option for PNPM.  Possible values are "fast" and "fewer-dependencies".  PNPM's default is "fast", but this may
+     * be incompatible with certain packages, for example the "@types" packages from DefinitelyTyped.  Rush's default
+     * is "fewer-dependencies", which causes PNPM to avoid installing a newer version if an already installed version
+     * can be reused; this is more similar to NPM's algorithm.
+     *
+     * After modifying this field, it's recommended to run "rush update --full" so that the package manager
+     * will recalculate all version selections.
+     */
+    // "resolutionStrategy": "fast",
+
+    /**
+     * If true, then `rush install` will report an error if manual modifications
+     * were made to the PNPM shrinkwrap file without running "rush update" afterwards.
+     *
+     * This feature protects against accidental inconsistencies that may be introduced
+     * if the PNPM shrinkwrap file ("pnpm-lock.yaml") is manually edited.  When this
+     * feature is enabled, "rush update" will append a hash to the file as a YAML comment,
+     * and then "rush update" and "rush install" will validate the hash.  Note that this does not prohibit
+     * manual modifications, but merely requires "rush update" be run
+     * afterwards, ensuring that PNPM can report or repair any potential inconsistencies.
+     *
+     * To temporarily disable this validation when invoking "rush install", use the
+     * "--bypass-policy" command-line parameter.
+     *
+     * The default value is false.
+     */
+    // "preventManualShrinkwrapChanges": true,
+
+    /**
+     * If true, then `rush install` will use the PNPM workspaces feature to perform the
+     * install.
+     *
+     * This feature uses PNPM to perform the entire monorepo install. When using workspaces, Rush will
+     * generate a "pnpm-workspace.yaml" file referencing all local projects to install. Rush will
+     * also generate a "pnpmfile.js" which is used to provide preferred versions support. When install
+     * is run, this pnpmfile will be used to replace dependency version ranges with a smaller subset
+     * of the original range. If the preferred version is not fully a subset of the original version
+     * range, it will be left as-is. After this, the pnpmfile.js provided in the repository (if one
+     * exists) will be called to further modify package dependencies.
+     *
+     * This option is experimental. The default value is false.
+     */
+    // "useWorkspaces": true
+  },
+
+  /**
+   * Older releases of the Node.js engine may be missing features required by your system.
+   * Other releases may have bugs.  In particular, the "latest" version will not be a
+   * Long Term Support (LTS) version and is likely to have regressions.
+   *
+   * Specify a SemVer range to ensure developers use a Node.js version that is appropriate
+   * for your repo.
+   *
+   * LTS schedule: https://nodejs.org/en/about/releases/
+   * LTS versions: https://nodejs.org/en/download/releases/
+   */
+  "nodeSupportedVersionRange": ">=12.13.0 <13.0.0 || >=14.15.0 <15.0.0 || >=16.0.0",
+
+  /**
+   * Odd-numbered major versions of Node.js are experimental.  Even-numbered releases
+   * spend six months in a stabilization period before the first Long Term Support (LTS) version.
+   * For example, 8.9.0 was the first LTS version of Node.js 8.  Pre-LTS versions are not recommended
+   * for production usage because they frequently have bugs.  They may cause Rush itself
+   * to malfunction.
+   *
+   * Rush normally prints a warning if it detects a pre-LTS Node.js version.  If you are testing
+   * pre-LTS versions in preparation for supporting the first LTS version, you can use this setting
+   * to disable Rush's warning.
+   */
+  // "suppressNodeLtsWarning": false,
+
+  /**
+   * If you would like the version specifiers for your dependencies to be consistent, then
+   * uncomment this line. This is effectively similar to running "rush check" before any
+   * of the following commands:
+   *
+   *   rush install, rush update, rush link, rush version, rush publish
+   *
+   * In some cases you may want this turned on, but need to allow certain packages to use a different
+   * version. In those cases, you will need to add an entry to the "allowedAlternativeVersions"
+   * section of the common-versions.json.
+   */
+  // "ensureConsistentVersions": true,
+
+  /**
+   * Large monorepos can become intimidating for newcomers if project folder paths don't follow
+   * a consistent and recognizable pattern.  When the system allows nested folder trees,
+   * we've found that teams will often use subfolders to create islands that isolate
+   * their work from others ("shipping the org").  This hinders collaboration and code sharing.
+   *
+   * The Rush developers recommend a "category folder" model, where buildable project folders
+   * must always be exactly two levels below the repo root.  The parent folder acts as the category.
+   * This provides a basic facility for grouping related projects (e.g. "apps", "libraries",
+   * "tools", "prototypes") while still encouraging teams to organize their projects into
+   * a unified taxonomy.  Limiting to 2 levels seems very restrictive at first, but if you have
+   * 20 categories and 20 projects in each category, this scheme can easily accommodate hundreds
+   * of projects.  In practice, you will find that the folder hierarchy needs to be rebalanced
+   * occasionally, but if that's painful, it's a warning sign that your development style may
+   * discourage refactoring.  Reorganizing the categories should be an enlightening discussion
+   * that brings people together, and maybe also identifies poor coding practices (e.g. file
+   * references that reach into other project's folders without using Node.js module resolution).
+   *
+   * The defaults are projectFolderMinDepth=1 and projectFolderMaxDepth=2.
+   *
+   * To remove these restrictions, you could set projectFolderMinDepth=1
+   * and set projectFolderMaxDepth to a large number.
+   */
+  // "projectFolderMinDepth": 2,
+  "projectFolderMaxDepth": 3,
+
+  /**
+   * Today the npmjs.com registry enforces fairly strict naming rules for packages, but in the early
+   * days there was no standard and hardly any enforcement.  A few large legacy projects are still using
+   * nonstandard package names, and private registries sometimes allow it.  Set "allowMostlyStandardPackageNames"
+   * to true to relax Rush's enforcement of package names.  This allows upper case letters and in the future may
+   * relax other rules, however we want to minimize these exceptions.  Many popular tools use certain punctuation
+   * characters as delimiters, based on the assumption that they will never appear in a package name; thus if we relax
+   * the rules too much it is likely to cause very confusing malfunctions.
+   *
+   * The default value is false.
+   */
+  // "allowMostlyStandardPackageNames": true,
+
+  /**
+   * This feature helps you to review and approve new packages before they are introduced
+   * to your monorepo.  For example, you may be concerned about licensing, code quality,
+   * performance, or simply accumulating too many libraries with overlapping functionality.
+   * The approvals are tracked in two config files "browser-approved-packages.json"
+   * and "nonbrowser-approved-packages.json".  See the Rush documentation for details.
+   */
+  // "approvedPackagesPolicy": {
+  //   /**
+  //    * The review categories allow you to say for example "This library is approved for usage
+  //    * in prototypes, but not in production code."
+  //    *
+  //    * Each project can be associated with one review category, by assigning the "reviewCategory" field
+  //    * in the "projects" section of rush.json.  The approval is then recorded in the files
+  //    * "common/config/rush/browser-approved-packages.json" and "nonbrowser-approved-packages.json"
+  //    * which are automatically generated during "rush update".
+  //    *
+  //    * Designate categories with whatever granularity is appropriate for your review process,
+  //    * or you could just have a single category called "default".
+  //    */
+  //   "reviewCategories": [
+  //     // Some example categories:
+  //     "production", // projects that ship to production
+  //     "tools",      // non-shipping projects that are part of the developer toolchain
+  //     "prototypes"  // experiments that should mostly be ignored by the review process
+  //   ],
+  //
+  //   /**
+  //    * A list of NPM package scopes that will be excluded from review.
+  //    * We recommend to exclude TypeScript typings (the "@types" scope), because
+  //    * if the underlying package was already approved, this would imply that the typings
+  //    * are also approved.
+  //    */
+  //   // "ignoredNpmScopes": ["@types"]
+  // },
+
+  /**
+   * If you use Git as your version control system, this section has some additional
+   * optional features you can use.
+   */
+  "gitPolicy": {
+    /**
+     * Work at a big company?  Tired of finding Git commits at work with unprofessional Git
+     * emails such as "beer-lover@my-college.edu"?  Rush can validate people's Git email address
+     * before they get started.
+     *
+     * Define a list of regular expressions describing allowable e-mail patterns for Git commits.
+     * They are case-insensitive anchored JavaScript RegExps.  Example: ".*@example\.com"
+     *
+     * IMPORTANT: Because these are regular expressions encoded as JSON string literals,
+     * RegExp escapes need two backslashes, and ordinary periods should be "\\.".
+     */
+    // "allowedEmailRegExps": [
+    //   "[^@]+@users\\.noreply\\.github\\.com",
+    //   "travis@example\\.org"
+    // ],
+
+    /**
+     * When Rush reports that the address is malformed, the notice can include an example
+     * of a recommended email.  Make sure it conforms to one of the allowedEmailRegExps
+     * expressions.
+     */
+    // "sampleEmail": "mrexample@users.noreply.github.com",
+
+    /**
+     * The commit message to use when committing changes during 'rush publish'.
+     *
+     * For example, if you want to prevent these commits from triggering a CI build,
+     * you might configure your system's trigger to look for a special string such as "[skip-ci]"
+     * in the commit message, and then customize Rush's message to contain that string.
+     */
+    // "versionBumpCommitMessage": "Applying package updates. [skip-ci]",
+
+    /**
+     * The commit message to use when committing changes during 'rush version'.
+     *
+     * For example, if you want to prevent these commits from triggering a CI build,
+     * you might configure your system's trigger to look for a special string such as "[skip-ci]"
+     * in the commit message, and then customize Rush's message to contain that string.
+     */
+    // "changeLogUpdateCommitMessage": "Deleting change files and updating change logs for package updates. [skip-ci]"
+  },
+
+  "repository": {
+    /**
+     * The URL of this Git repository, used by "rush change" to determine the base branch for your PR.
+     *
+     * The "rush change" command needs to determine which files are affected by your PR diff.
+     * If you merged or cherry-picked commits from the master branch into your PR branch, those commits
+     * should be excluded from this diff (since they belong to some other PR).  In order to do that,
+     * Rush needs to know where to find the base branch for your PR.  This information cannot be
+     * determined from Git alone, since the "pull request" feature is not a Git concept.  Ideally
+     * Rush would use a vendor-specific protocol to query the information from GitHub, Azure DevOps, etc.
+     * But to keep things simple, "rush change" simply assumes that your PR is against the "master" branch
+     * of the Git remote indicated by the repository.url setting in rush.json.  If you are working in
+     * a GitHub "fork" of the real repo, this setting will be different from the repository URL of your
+     * your PR branch, and in this situation "rush change" will also automatically invoke "git fetch"
+     * to retrieve the latest activity for the remote master branch.
+     */
+    "url": "https://github.com/digitranslab/anticrm",
+
+    /**
+     * The default branch name. This tells "rush change" which remote branch to compare against.
+     * The default value is "master"
+     */
+    "defaultBranch": "main",
+
+    /**
+     * The default remote. This tells "rush change" which remote to compare against if the remote URL is
+     * not set or if a remote matching the provided remote URL is not found.
+     */
+    "defaultRemote": "origin"
+  },
+
+  /**
+   * Event hooks are customized script actions that Rush executes when specific events occur
+   */
+  "eventHooks": {
+    /**
+     * The list of shell commands to run before the Rush installation starts
+     */
+    "preRushInstall": [
+      // "common/scripts/pre-rush-install.js"
+    ],
+
+    /**
+     * The list of shell commands to run after the Rush installation finishes
+     */
+    "postRushInstall": [],
+
+    /**
+     * The list of shell commands to run before the Rush build command starts
+     */
+    "preRushBuild": [],
+
+    /**
+     * The list of shell commands to run after the Rush build command finishes
+     */
+    "postRushBuild": []
+  },
+
+  /**
+   * Rush can collect anonymous telemetry about everyday developer activity such as
+   * success/failure of installs, builds, and other operations.  You can use this to identify
+   * problems with your toolchain or Rush itself.  THIS TELEMETRY IS NOT SHARED WITH MICROSOFT.
+   * It is written into JSON files in the common/temp folder.  It's up to you to write scripts
+   * that read these JSON files and do something with them.  These scripts are typically registered
+   * in the "eventHooks" section.
+   */
+  // "telemetryEnabled": false,
+
+  /**
+   * Allows creation of hotfix changes. This feature is experimental so it is disabled by default.
+   * If this is set, 'rush change' only allows a 'hotfix' change type to be specified. This change type
+   * will be used when publishing subsequent changes from the monorepo.
+   */
+  // "hotfixChangeEnabled": false,
+
+  /**
+   * (Required) This is the inventory of projects to be managed by Rush.
+   *
+   * Rush does not automatically scan for projects using wildcards, for a few reasons:
+   * 1. Depth-first scans are expensive, particularly when tools need to repeatedly collect the list.
+   * 2. On a caching CI machine, scans can accidentally pick up files left behind from a previous build.
+   * 3. It's useful to have a centralized inventory of all projects and their important metadata.
+   */
+  "projects": [
+    // {
+    //   /**
+    //    * The NPM package name of the project (must match package.json)
+    //    */
+    //   "packageName": "my-app",
+    //
+    //   /**
+    //    * The path to the project folder, relative to the rush.json config file.
+    //    */
+    //   "projectFolder": "apps/my-app",
+    //
+    //   /**
+    //    * An optional category for usage in the "browser-approved-packages.json"
+    //    * and "nonbrowser-approved-packages.json" files.  The value must be one of the
+    //    * strings from the "reviewCategories" defined above.
+    //    */
+    //   "reviewCategory": "production",
+    //
+    //   /**
+    //    * A list of local projects that appear as devDependencies for this project, but cannot be
+    //    * locally linked because it would create a cyclic dependency; instead, the last published
+    //    * version will be installed in the Common folder.
+    //    */
+    //   "cyclicDependencyProjects": [
+    //     // "my-toolchain"
+    //   ],
+    //
+    //   /**
+    //    * If true, then this project will be ignored by the "rush check" command.
+    //    * The default value is false.
+    //    */
+    //   // "skipRushCheck": false,
+    //
+    //   /**
+    //    * A flag indicating that changes to this project will be published to npm, which affects
+    //    * the Rush change and publish workflows. The default value is false.
+    //    * NOTE: "versionPolicyName" and "shouldPublish" are alternatives; you cannot specify them both.
+    //    */
+    //   // "shouldPublish": false,
+    //
+    //   /**
+    //    * Facilitates postprocessing of a project's files prior to publishing.
+    //    *
+    //    * If specified, the "publishFolder" is the relative path to a subfolder of the project folder.
+    //    * The "rush publish" command will publish the subfolder instead of the project folder.  The subfolder
+    //    * must contain its own package.json file, which is typically a build output.
+    //    */
+    //   // "publishFolder": "temp/publish",
+    //
+    //   /**
+    //    * An optional version policy associated with the project.  Version policies are defined
+    //    * in "version-policies.json" file.  See the "rush publish" documentation for more info.
+    //    * NOTE: "versionPolicyName" and "shouldPublish" are alternatives; you cannot specify them both.
+    //    */
+    //   // "versionPolicyName": ""
+    // },
+    //
+    {
+      "packageName": "@digitranslab/platform-rig",
+      "projectFolder": "packages/platform-rig",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/platform",
+      "projectFolder": "packages/platform",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/core",
+      "projectFolder": "packages/core",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/analytics",
+      "projectFolder": "packages/analytics",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/analytics-service",
+      "projectFolder": "packages/analytics-service",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/storage",
+      "projectFolder": "packages/storage",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/highlight",
+      "projectFolder": "packages/highlight",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/api-client",
+      "projectFolder": "packages/api-client",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/importer",
+      "projectFolder": "packages/importer",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/collaboration",
+      "projectFolder": "server/collaboration",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-ws",
+      "projectFolder": "server/ws",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/theme",
+      "projectFolder": "packages/theme",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/text",
+      "projectFolder": "packages/text",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/ui",
+      "projectFolder": "packages/ui",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/uploader",
+      "projectFolder": "plugins/uploader",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/uploader-assets",
+      "projectFolder": "plugins/uploader-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/uploader-resources",
+      "projectFolder": "plugins/uploader-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-uploader",
+      "projectFolder": "models/uploader",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/collaborator-client",
+      "projectFolder": "packages/collaborator-client",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/prod",
+      "projectFolder": "dev/prod",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-core",
+      "projectFolder": "server/core",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-indexer",
+      "projectFolder": "server/indexer",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-token",
+      "projectFolder": "server/token",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/server",
+      "projectFolder": "server/server",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-storage",
+      "projectFolder": "server/server-storage",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-pipeline",
+      "projectFolder": "server/server-pipeline",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/login",
+      "projectFolder": "plugins/login",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/login-assets",
+      "projectFolder": "plugins/login-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/login-resources",
+      "projectFolder": "plugins/login-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/onboard",
+      "projectFolder": "plugins/onboard",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/onboard-assets",
+      "projectFolder": "plugins/onboard-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/onboard-resources",
+      "projectFolder": "plugins/onboard-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/workbench",
+      "projectFolder": "plugins/workbench",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/workbench-assets",
+      "projectFolder": "plugins/workbench-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/workbench-resources",
+      "projectFolder": "plugins/workbench-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/presentation",
+      "projectFolder": "packages/presentation",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-presentation",
+      "projectFolder": "models/presentation",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/client",
+      "projectFolder": "plugins/client",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/client-resources",
+      "projectFolder": "plugins/client-resources",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/query",
+      "projectFolder": "packages/query",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/rank",
+      "projectFolder": "packages/rank",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/view",
+      "projectFolder": "plugins/view",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/view-assets",
+      "projectFolder": "plugins/view-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/view-resources",
+      "projectFolder": "plugins/view-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model",
+      "projectFolder": "packages/model",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/model-core",
+      "projectFolder": "models/core",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-all",
+      "projectFolder": "models/all",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-view",
+      "projectFolder": "models/view",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/contact",
+      "projectFolder": "plugins/contact",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/contact-assets",
+      "projectFolder": "plugins/contact-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/contact-resources",
+      "projectFolder": "plugins/contact-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/task",
+      "projectFolder": "plugins/task",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/task-assets",
+      "projectFolder": "plugins/task-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/task-resources",
+      "projectFolder": "plugins/task-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-workbench",
+      "projectFolder": "models/workbench",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-task",
+      "projectFolder": "models/task",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-contact",
+      "projectFolder": "models/contact",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/text-editor",
+      "projectFolder": "plugins/text-editor",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/text-editor-assets",
+      "projectFolder": "plugins/text-editor-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/text-editor-resources",
+      "projectFolder": "plugins/text-editor-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/chunter",
+      "projectFolder": "plugins/chunter",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/chunter-assets",
+      "projectFolder": "plugins/chunter-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/chunter-resources",
+      "projectFolder": "plugins/chunter-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-chunter",
+      "projectFolder": "models/chunter",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/recruit",
+      "projectFolder": "plugins/recruit",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/recruit-assets",
+      "projectFolder": "plugins/recruit-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/recruit-resources",
+      "projectFolder": "plugins/recruit-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-recruit",
+      "projectFolder": "models/recruit",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/image-cropper",
+      "projectFolder": "plugins/image-cropper",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/image-cropper-resources",
+      "projectFolder": "plugins/image-cropper-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-core",
+      "projectFolder": "models/server-core",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-attachment",
+      "projectFolder": "server-plugins/attachment",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-attachment",
+      "projectFolder": "models/server-attachment",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-attachment-resources",
+      "projectFolder": "server-plugins/attachment-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-collaboration",
+      "projectFolder": "server-plugins/collaboration",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-collaboration",
+      "projectFolder": "models/server-collaboration",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-collaboration-resources",
+      "projectFolder": "server-plugins/collaboration-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-contact",
+      "projectFolder": "server-plugins/contact",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-contact",
+      "projectFolder": "models/server-contact",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-contact-resources",
+      "projectFolder": "server-plugins/contact-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/mongo",
+      "projectFolder": "server/mongo",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/postgres",
+      "projectFolder": "server/postgres",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/elastic",
+      "projectFolder": "server/elastic",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/rpc",
+      "projectFolder": "server/rpc",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/pod-front",
+      "projectFolder": "pods/front",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-stats",
+      "projectFolder": "pods/stats",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-server",
+      "projectFolder": "pods/server",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/front",
+      "projectFolder": "server/front",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/account",
+      "projectFolder": "server/account",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/account-service",
+      "projectFolder": "server/account-service",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/workspace-service",
+      "projectFolder": "server/workspace-service",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/collaborator",
+      "projectFolder": "server/collaborator",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/tool",
+      "projectFolder": "dev/tool",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/import-tool",
+      "projectFolder": "dev/import-tool",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-account",
+      "projectFolder": "pods/account",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-workspace",
+      "projectFolder": "pods/workspace",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-collaborator",
+      "projectFolder": "pods/collaborator",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/panel",
+      "projectFolder": "packages/panel",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/activity",
+      "projectFolder": "plugins/activity",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/activity-assets",
+      "projectFolder": "plugins/activity-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/activity-resources",
+      "projectFolder": "plugins/activity-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-activity",
+      "projectFolder": "models/activity",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/setting",
+      "projectFolder": "plugins/setting",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/setting-assets",
+      "projectFolder": "plugins/setting-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/setting-resources",
+      "projectFolder": "plugins/setting-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-setting",
+      "projectFolder": "models/setting",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/telegram",
+      "projectFolder": "plugins/telegram",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/telegram-assets",
+      "projectFolder": "plugins/telegram-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/telegram-resources",
+      "projectFolder": "plugins/telegram-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-telegram",
+      "projectFolder": "models/telegram",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/devmodel-resources",
+      "projectFolder": "plugins/devmodel-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/devmodel",
+      "projectFolder": "plugins/devmodel",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/attachment",
+      "projectFolder": "plugins/attachment",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/attachment-assets",
+      "projectFolder": "plugins/attachment-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/attachment-resources",
+      "projectFolder": "plugins/attachment-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-attachment",
+      "projectFolder": "models/attachment",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/lead",
+      "projectFolder": "plugins/lead",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/lead-assets",
+      "projectFolder": "plugins/lead-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/lead-resources",
+      "projectFolder": "plugins/lead-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-lead",
+      "projectFolder": "models/lead",
+      "shouldPublish": false
+    },
+    // {
+    //   "packageName": "@digitranslab/storybook",
+    //   "projectFolder": "dev/storybook",
+    //   "shouldPublish": false
+    // },
+    {
+      "packageName": "@digitranslab/model-gmail",
+      "projectFolder": "models/gmail",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/gmail",
+      "projectFolder": "plugins/gmail",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/gmail-assets",
+      "projectFolder": "plugins/gmail-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/gmail-resources",
+      "projectFolder": "plugins/gmail-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-inventory",
+      "projectFolder": "models/inventory",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/inventory",
+      "projectFolder": "plugins/inventory",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/inventory-assets",
+      "projectFolder": "plugins/inventory-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/inventory-resources",
+      "projectFolder": "plugins/inventory-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/templates",
+      "projectFolder": "plugins/templates",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/templates-assets",
+      "projectFolder": "plugins/templates-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/templates-resources",
+      "projectFolder": "plugins/templates-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-templates",
+      "projectFolder": "models/templates",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-templates",
+      "projectFolder": "server-plugins/templates",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-templates",
+      "projectFolder": "models/server-templates",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-text-editor",
+      "projectFolder": "models/text-editor",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-tool",
+      "projectFolder": "server/tool",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-client",
+      "projectFolder": "server/client",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/tests-sanity",
+      "projectFolder": "tests/sanity",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/qms-tests-sanity",
+      "projectFolder": "qms-tests/sanity",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/rekoni",
+      "projectFolder": "packages/rekoni",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-notification",
+      "projectFolder": "models/notification",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/notification",
+      "projectFolder": "plugins/notification",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/notification-assets",
+      "projectFolder": "plugins/notification-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/notification-resources",
+      "projectFolder": "plugins/notification-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-notification",
+      "projectFolder": "server-plugins/notification",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-notification",
+      "projectFolder": "models/server-notification",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-notification-resources",
+      "projectFolder": "server-plugins/notification-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/tags",
+      "projectFolder": "plugins/tags",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/tags-assets",
+      "projectFolder": "plugins/tags-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/tags-resources",
+      "projectFolder": "plugins/tags-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-tags",
+      "projectFolder": "models/tags",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-chunter",
+      "projectFolder": "server-plugins/chunter",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-chunter",
+      "projectFolder": "models/server-chunter",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-chunter-resources",
+      "projectFolder": "server-plugins/chunter-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-inventory",
+      "projectFolder": "server-plugins/inventory",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-inventory",
+      "projectFolder": "models/server-inventory",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-inventory-resources",
+      "projectFolder": "server-plugins/inventory-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-lead",
+      "projectFolder": "server-plugins/lead",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-lead",
+      "projectFolder": "models/server-lead",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-lead-resources",
+      "projectFolder": "server-plugins/lead-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-recruit",
+      "projectFolder": "server-plugins/recruit",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-recruit",
+      "projectFolder": "models/server-recruit",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-recruit-resources",
+      "projectFolder": "server-plugins/recruit-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-task",
+      "projectFolder": "server-plugins/task",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-task",
+      "projectFolder": "models/server-task",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-tracker",
+      "projectFolder": "server-plugins/tracker",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-tracker",
+      "projectFolder": "models/server-tracker",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-tracker-resources",
+      "projectFolder": "server-plugins/tracker-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-task-resources",
+      "projectFolder": "server-plugins/task-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-setting",
+      "projectFolder": "server-plugins/setting",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-setting",
+      "projectFolder": "models/server-setting",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-setting-resources",
+      "projectFolder": "server-plugins/setting-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/calendar",
+      "projectFolder": "plugins/calendar",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/calendar-assets",
+      "projectFolder": "plugins/calendar-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/calendar-resources",
+      "projectFolder": "plugins/calendar-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-calendar",
+      "projectFolder": "models/calendar",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-tags",
+      "projectFolder": "server-plugins/tags",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-tags",
+      "projectFolder": "models/server-tags",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-tags-resources",
+      "projectFolder": "server-plugins/tags-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-calendar",
+      "projectFolder": "server-plugins/calendar",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-calendar",
+      "projectFolder": "models/server-calendar",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-calendar-resources",
+      "projectFolder": "server-plugins/calendar-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-gmail",
+      "projectFolder": "server-plugins/gmail",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-gmail",
+      "projectFolder": "models/server-gmail",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-gmail-resources",
+      "projectFolder": "server-plugins/gmail-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-telegram",
+      "projectFolder": "server-plugins/telegram",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-telegram",
+      "projectFolder": "models/server-telegram",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-telegram-resources",
+      "projectFolder": "server-plugins/telegram-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/tracker",
+      "projectFolder": "plugins/tracker",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/tracker-assets",
+      "projectFolder": "plugins/tracker-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/tracker-resources",
+      "projectFolder": "plugins/tracker-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-tracker",
+      "projectFolder": "models/tracker",
+      "shouldPublish": false
+    },
+
+    {
+      "packageName": "@digitranslab/board",
+      "projectFolder": "plugins/board",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/board-assets",
+      "projectFolder": "plugins/board-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/board-resources",
+      "projectFolder": "plugins/board-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-board",
+      "projectFolder": "models/board",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/kanban",
+      "projectFolder": "packages/kanban",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/preference",
+      "projectFolder": "plugins/preference",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/preference-assets",
+      "projectFolder": "plugins/preference-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-preference",
+      "projectFolder": "models/preference",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-preference",
+      "projectFolder": "server-plugins/preference",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/middleware",
+      "projectFolder": "server/middleware",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-backup",
+      "projectFolder": "server/backup",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/backup-service",
+      "projectFolder": "server/backup-service",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-backup",
+      "projectFolder": "pods/backup",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-fulltext",
+      "projectFolder": "pods/fulltext",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-fulltext",
+      "projectFolder": "server-plugins/fulltext",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-fulltext-resources",
+      "projectFolder": "server-plugins/fulltext-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-fulltext",
+      "projectFolder": "models/server-fulltext",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/hr",
+      "projectFolder": "plugins/hr",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/hr-assets",
+      "projectFolder": "plugins/hr-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/hr-resources",
+      "projectFolder": "plugins/hr-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-hr",
+      "projectFolder": "models/hr",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-hr",
+      "projectFolder": "server-plugins/hr",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-hr",
+      "projectFolder": "models/server-hr",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-hr-resources",
+      "projectFolder": "server-plugins/hr-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/minio",
+      "projectFolder": "server/minio",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/s3",
+      "projectFolder": "server/s3",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/datalake",
+      "projectFolder": "server/datalake",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/bitrix",
+      "projectFolder": "plugins/bitrix",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/bitrix-assets",
+      "projectFolder": "plugins/bitrix-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/bitrix-resources",
+      "projectFolder": "plugins/bitrix-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-bitrix",
+      "projectFolder": "models/bitrix",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/request",
+      "projectFolder": "plugins/request",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/request-assets",
+      "projectFolder": "plugins/request-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/request-resources",
+      "projectFolder": "plugins/request-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-request",
+      "projectFolder": "models/request",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-request",
+      "projectFolder": "server-plugins/request",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-request",
+      "projectFolder": "models/server-request",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-request-resources",
+      "projectFolder": "server-plugins/request-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-view",
+      "projectFolder": "server-plugins/view",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-view",
+      "projectFolder": "models/server-view",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-view-resources",
+      "projectFolder": "server-plugins/view-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-activity",
+      "projectFolder": "server-plugins/activity",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-activity",
+      "projectFolder": "models/server-activity",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-activity-resources",
+      "projectFolder": "server-plugins/activity-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-support",
+      "projectFolder": "models/support",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/support",
+      "projectFolder": "plugins/support",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/support-assets",
+      "projectFolder": "plugins/support-assets",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/support-resources",
+      "projectFolder": "plugins/support-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/guest",
+      "projectFolder": "plugins/guest",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@digitranslab/guest-assets",
+      "projectFolder": "plugins/guest-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/guest-resources",
+      "projectFolder": "plugins/guest-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-guest",
+      "projectFolder": "models/guest",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-guest",
+      "projectFolder": "server-plugins/guest",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-guest",
+      "projectFolder": "models/server-guest",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-guest-resources",
+      "projectFolder": "server-plugins/guest-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/auth-providers",
+      "projectFolder": "pods/authProviders",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/time",
+      "projectFolder": "plugins/time",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/time-assets",
+      "projectFolder": "plugins/time-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/time-resources",
+      "projectFolder": "plugins/time-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-time",
+      "projectFolder": "models/time",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-time",
+      "projectFolder": "server-plugins/time",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-time-resources",
+      "projectFolder": "server-plugins/time-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-time",
+      "projectFolder": "models/server-time",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/document",
+      "projectFolder": "plugins/document",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/document-assets",
+      "projectFolder": "plugins/document-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/document-resources",
+      "projectFolder": "plugins/document-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-document",
+      "projectFolder": "models/document",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-document",
+      "projectFolder": "server-plugins/document",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-document-resources",
+      "projectFolder": "server-plugins/document-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-document",
+      "projectFolder": "models/server-document",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/love",
+      "projectFolder": "plugins/love",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/love-assets",
+      "projectFolder": "plugins/love-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/love-resources",
+      "projectFolder": "plugins/love-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-love",
+      "projectFolder": "models/love",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-love",
+      "projectFolder": "server-plugins/love",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-love-resources",
+      "projectFolder": "server-plugins/love-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-love",
+      "projectFolder": "models/server-love",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/drive",
+      "projectFolder": "plugins/drive",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/drive-assets",
+      "projectFolder": "plugins/drive-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/drive-resources",
+      "projectFolder": "plugins/drive-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-drive",
+      "projectFolder": "models/drive",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-drive",
+      "projectFolder": "server-plugins/drive",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-drive",
+      "projectFolder": "models/server-drive",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-drive-resources",
+      "projectFolder": "server-plugins/drive-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/controlled-documents",
+      "projectFolder": "plugins/controlled-documents",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/controlled-documents-assets",
+      "projectFolder": "plugins/controlled-documents-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/controlled-documents-resources",
+      "projectFolder": "plugins/controlled-documents-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-controlled-documents",
+      "projectFolder": "models/controlled-documents",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-controlled-documents",
+      "projectFolder": "server-plugins/controlled-documents",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-controlled-documents-resources",
+      "projectFolder": "server-plugins/controlled-documents-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-controlled-documents",
+      "projectFolder": "models/server-controlled-documents",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/print",
+      "projectFolder": "plugins/print",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/print-assets",
+      "projectFolder": "plugins/print-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/print-resources",
+      "projectFolder": "plugins/print-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-print",
+      "projectFolder": "models/print",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/sign",
+      "projectFolder": "plugins/sign",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/products",
+      "projectFolder": "plugins/products",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/products-assets",
+      "projectFolder": "plugins/products-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/products-resources",
+      "projectFolder": "plugins/products-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-products",
+      "projectFolder": "models/products",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-products",
+      "projectFolder": "models/server-products",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/questions",
+      "projectFolder": "plugins/questions",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/questions-assets",
+      "projectFolder": "plugins/questions-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/questions-resources",
+      "projectFolder": "plugins/questions-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-questions",
+      "projectFolder": "models/questions",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/training",
+      "projectFolder": "plugins/training",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/training-assets",
+      "projectFolder": "plugins/training-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/training-resources",
+      "projectFolder": "plugins/training-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-training",
+      "projectFolder": "server-plugins/training",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-training-resources",
+      "projectFolder": "server-plugins/training-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-training",
+      "projectFolder": "models/training",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-training",
+      "projectFolder": "models/server-training",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/desktop",
+      "projectFolder": "desktop",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "desktop",
+      "projectFolder": "desktop-package",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/diffview",
+      "projectFolder": "plugins/diffview",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/diffview-assets",
+      "projectFolder": "plugins/diffview-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/diffview-resources",
+      "projectFolder": "plugins/diffview-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/github",
+      "projectFolder": "services/github/github",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/github-assets",
+      "projectFolder": "services/github/github-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/github-resources",
+      "projectFolder": "services/github/github-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-github",
+      "projectFolder": "services/github/model-github",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-github",
+      "projectFolder": "services/github/pod-github",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-github",
+      "projectFolder": "services/github/server-github",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-github-resources",
+      "projectFolder": "services/github/server-github-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-github-model",
+      "projectFolder": "services/github/server-github-model",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/desktop-preferences",
+      "projectFolder": "plugins/desktop-preferences",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/desktop-preferences-assets",
+      "projectFolder": "plugins/desktop-preferences-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/desktop-preferences-resources",
+      "projectFolder": "plugins/desktop-preferences-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-desktop-preferences",
+      "projectFolder": "models/desktop-preferences",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-ses",
+      "projectFolder": "services/ses/pod-ses",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-telegram",
+      "projectFolder": "services/telegram/pod-telegram",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-gmail",
+      "projectFolder": "services/gmail/pod-gmail",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-calendar",
+      "projectFolder": "services/calendar/pod-calendar",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/qms-doc-import-tool",
+      "projectFolder": "dev/doc-import-tool",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-love",
+      "projectFolder": "services/love",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-print",
+      "projectFolder": "services/print/pod-print",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-sign",
+      "projectFolder": "services/sign/pod-sign",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/rekoni-service",
+      "projectFolder": "services/rekoni",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-analytics-collector",
+      "projectFolder": "services/analytics-collector/pod-analytics-collector",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/analytics-collector",
+      "projectFolder": "plugins/analytics-collector",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/analytics-collector-assets",
+      "projectFolder": "plugins/analytics-collector-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/analytics-collector-resources",
+      "projectFolder": "plugins/analytics-collector-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-analytics-collector",
+      "projectFolder": "models/analytics-collector",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-analytics-collector",
+      "projectFolder": "server-plugins/analytics-collector",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-analytics-collector-resources",
+      "projectFolder": "server-plugins/analytics-collector-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-ai-bot",
+      "projectFolder": "services/ai-bot/pod-ai-bot",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/ai-bot",
+      "projectFolder": "plugins/ai-bot",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/ai-bot-resources",
+      "projectFolder": "plugins/ai-bot-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-ai-bot",
+      "projectFolder": "models/ai-bot",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-server-ai-bot",
+      "projectFolder": "models/server-ai-bot",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-ai-bot",
+      "projectFolder": "server-plugins/ai-bot",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/server-ai-bot-resources",
+      "projectFolder": "server-plugins/ai-bot-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/pod-telegram-bot",
+      "projectFolder": "services/telegram-bot/pod-telegram-bot",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/openai",
+      "projectFolder": "plugins/openai",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/cloud-branding",
+      "projectFolder": "workers/branding",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/cloud-datalake",
+      "projectFolder": "workers/datalake",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/scripts",
+      "projectFolder": "common/scripts",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-test-management",
+      "projectFolder": "models/test-management",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/test-management",
+      "projectFolder": "plugins/test-management",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/test-management-resources",
+      "projectFolder": "plugins/test-management-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/test-management-assets",
+      "projectFolder": "plugins/test-management-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/survey",
+      "projectFolder": "plugins/survey",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/model-survey",
+      "projectFolder": "models/survey",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/survey-assets",
+      "projectFolder": "plugins/survey-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@digitranslab/survey-resources",
+      "projectFolder": "plugins/survey-resources",
+      "shouldPublish": false
+    }
+  ]
+}
