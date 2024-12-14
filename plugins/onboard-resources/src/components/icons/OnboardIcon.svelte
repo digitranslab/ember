@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100" zoomAndPan="magnify" viewBox="0 0 144 143.999998" height="100" preserveAspectRatio="xMidYMid meet" version="1.0">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" zoomAndPan="magnify" viewBox="0 0 144 143.999998" height="20" preserveAspectRatio="xMidYMid meet" version="1.0">
     <defs>
         <clipPath id="51ab072129">
             <path d="M 0 0.269531 L 144 0.269531 L 144 126 L 0 126 Z M 0 0.269531 " clip-rule="nonzero"/>

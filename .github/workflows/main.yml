@@ -498,9 +498,9 @@ jobs:
 
       - name: Checkout init repository
         run: |
-          wget https://github.com/digitranslab/init/archive/refs/heads/${{env.INIT_SCRIPTS_BRANCH}}.zip
+          wget https://github.com/digitranslab/ember-init/archive/refs/heads/${{env.INIT_SCRIPTS_BRANCH}}.zip
           unzip ${{env.INIT_SCRIPTS_BRANCH}}.zip -d pods/workspace
-          mv pods/workspace/init-${{env.INIT_SCRIPTS_BRANCH}} pods/workspace/init
+          mv pods/workspace/ember-init-${{env.INIT_SCRIPTS_BRANCH}} pods/workspace/ember-init
           rm -rf ${{env.INIT_SCRIPTS_BRANCH}}.zip
 
       - uses: actions/setup-node@v4
