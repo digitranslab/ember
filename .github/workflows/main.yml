@@ -497,11 +497,8 @@ jobs:
           filter: tree:0
 
       - name: Checkout init repository
-        run: |
-          wget https://github.com/digitranslab/ember-init/archive/refs/heads/${{env.INIT_SCRIPTS_BRANCH}}.zip
-          unzip ${{env.INIT_SCRIPTS_BRANCH}}.zip -d pods/workspace
-          mv pods/workspace/ember-init-${{env.INIT_SCRIPTS_BRANCH}} pods/workspace/ember-init
-          rm -rf ${{env.INIT_SCRIPTS_BRANCH}}.zip
+        run: |          
+          git clone https://github.com/digitranslab/ember-init.git pods/workspace/ember-init
 
       - uses: actions/setup-node@v4
         with:
