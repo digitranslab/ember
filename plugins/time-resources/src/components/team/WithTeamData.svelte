@@ -1,0 +1,105 @@
+<!--
+// Copyright © 2023 Digitrans Inc.
+//
+// Licensed under the Eclipse Public License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License. You may
+// obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//
+// See the License for the specific language governing permissions and
+// limitations under the License.
+-->
+<script lang="ts">
+  import calendar, { Calendar, Event } from '@digitranslab/calendar'
+  import { visibleCalendarStore, hidePrivateEvents, calendarByIdStore } from '@digitranslab/calendar-resources'
+  import contact, { Person, PersonAccount } from '@digitranslab/contact'
+  import { IdMap, Ref, toIdMap } from '@digitranslab/core'
+  import { createQuery, getClient } from '@digitranslab/presentation'
+  import task, { Project } from '@digitranslab/task'
+  import time, { ToDo, WorkSlot } from '@digitranslab/time'
+
+  export let space: Ref<Project>
+  export let fromDate: number
+  export let toDate: number
+  export let project: Project | undefined
+  export let personAccounts: PersonAccount[] = []
+  export let slots: WorkSlot[] = []
+  export let events: Event[] = []
+  export let todos: IdMap<ToDo> = new Map()
+  export let persons: Ref<Person>[] = []
+
+  const client = getClient()
+
+  const spaceQuery = createQuery()
+  $: spaceQuery.query(task.class.Project, { _id: space }, (res) => {
+    ;[project] = res
+  })
+
+  const query = createQuery()
+  const queryR = createQuery()
+  let raw: Event[] = []
+  let rawEvent: Event[] = []
+  let rawReq: Event[] = []
+
+  let calendarIds: Ref<Calendar>[] = []
+
+  const accountsQuery = createQuery()
+  $: accountsQuery.query(
+    contact.class.PersonAccount,
+    { _id: { $in: project?.members.map((it) => it as Ref<PersonAccount>) ?? [] } },
+    (res) => {
+      persons = res.flatMap((it) => it.person).filter((it, idx, arr) => arr.indexOf(it) === idx)
+    }
+  )
+
+  $: query.query(
+    calendar.class.Event,
+    {
+      _class: { $ne: calendar.class.ReccuringEvent },
+      calendar: { $in: calendarIds },
+      date: { $lte: toDate },
+      dueDate: { $gte: fromDate },
+      participants: { $in: persons } as any
+    },
+    (res) => {
+      rawEvent = res
+    }
+  )
+
+  $: queryR.query(
+    calendar.class.ReccuringEvent,
+    { calendar: { $in: calendarIds }, participants: { $in: persons } as any },
+    (res) => {
+      rawReq = res
+    }
+  )
+
+  $: raw = rawEvent.concat(rawReq).filter((it, idx, arr) => arr.findIndex((e) => e.eventId === it.eventId) === idx)
+
+  $: visible = hidePrivateEvents(raw, $calendarByIdStore, false)
+
+  const todoQuery = createQuery()
+
+  $: slots = visible.filter((it) => client.getHierarchy().isDerived(it._class, time.class.WorkSlot)) as WorkSlot[]
+  $: events = visible.filter((it) => !client.getHierarchy().isDerived(it._class, time.class.WorkSlot))
+
+  $: todoQuery.query(
+    time.class.ToDo,
+    {
+      _id: { $in: slots.map((it) => it.attachedTo).filter((it, idx, arr) => arr.indexOf(it) === idx) }
+    },
+    (res) => {
+      todos = toIdMap(res)
+    }
+  )
+
+  $: calendarIds = $visibleCalendarStore.map((p) => p._id)
+
+  const personMapQuery = createQuery()
+  $: personMapQuery.query(contact.class.PersonAccount, { person: { $in: persons } }, (res) => {
+    personAccounts = res
+  })
+</script>

@@ -1,0 +1,34 @@
+{
+  "name": "@digitranslab/client",
+  "entries": [
+    {
+      "version": "0.6.1",
+      "tag": "@digitranslab/client_v0.6.1",
+      "date": "Sun, 08 Aug 2021 21:05:26 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix server connection"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@digitranslab/core\" from `~0.6.0` to `~0.6.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.6.0",
+      "tag": "@digitranslab/client_v0.6.0",
+      "date": "Sun, 08 Aug 2021 10:14:57 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@digitranslab/platform\" from `~0.6.3` to `~0.6.4`"
+          }
+        ]
+      }
+    }
+  ]
+}

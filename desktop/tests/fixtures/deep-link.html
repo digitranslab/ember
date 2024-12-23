@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <section>
+      <h3>Open static url in app</h3>
+      <a 
+        href="ember://front.digitrans.lab/workbench/platform/tracker/TSK-1"
+      >
+        Open in the app
+      </a>
+    </section>
+    <section>
+      <h3>Open any url in app</h3>
+      <style>
+        #urlInput {
+          padding: 5px;
+          display: block;
+          width: 600px;
+        }
+      </style>
+      <input 
+        id="urlInput" 
+        value="https://front.digitrans.lab/workbench/platform/tracker/TSK-1"
+      />    
+      <script>
+        // const src = "ember://front.digitrans.lab/workbench/platform/tracker/TSK-1"
+
+        function openInApp(link) {
+          // Try to open in the app using a hidden iframe
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = link;
+          document.body.appendChild(iframe);
+
+          // // Fallback to opening in the browser if custom protocol is not supported
+          // setTimeout(() => {
+          //   document.body.removeChild(iframe);
+          //   window.location.href = link;
+          // }, 500);
+        }
+
+        function openLink() {
+          setTimeout(() => {
+            const inp = document.getElementById('urlInput')            
+            const url = inp.value
+              .replace('https://', 'ember://')
+              .replace('http://', 'ember://')
+
+            openInApp(url)
+          }, 1000)
+        }
+      </script>
+      <button onclick="openLink()" >
+        Open in the app automatically (after 1 sec)
+      </button>
+  </section>
+  </body>
+</html>
