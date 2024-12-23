@@ -6,30 +6,13 @@ This repository includes several applications, such as Chat, Project Management,
 Various teams are building products on top of the Platform, including [Ember](https://ember.io) and [TraceX](https://tracex.co).
 
 
-## Table of Content
-
-- [Ember Platform](#ember-platform)
-  - [Table of Content](#table-of-content)
-  - [Pre-requisites](#pre-requisites)
-  - [Verification](#verification)
-  - [Installation](#installation)
-  - [Build and run](#build-and-run)
-  - [Run in development mode](#run-in-development-mode)
-  - [Update project structure and database](#update-project-structure-and-database)
-  - [Troubleshooting](#troubleshooting)
-  - [Build \& Watch](#build--watch)
-  - [Tests](#tests)
-    - [Unit tests](#unit-tests)
-    - [UI tests](#ui-tests)
-  - [Package publishing](#package-publishing)
-  - [Additional testing](#additional-testing)
-
 ## Pre-requisites
 
 - Before proceeding, ensure that your system meets the following requirements:
   - [Node.js](https://nodejs.org/en/download/) (v20.11.0 is required)
   - [Docker](https://docs.docker.com/get-docker/)
   - [Docker Compose](https://docs.docker.com/compose/install/)
+
 
 ## Verification
 
@@ -209,10 +192,3 @@ rushx dev-debug -g 'pattern' # To execute tests in debug mode with only the matc
 ```bash
 node ./common/scripts/bump.js -p projectName
 ```
-
-## Additional testing
-
-This project is tested with BrowserStack.
-
-<sub><sup>&copy; 2024 <a href="https://digitranslab.com">Digitrans Inc</a>.</sup></sub>
-
